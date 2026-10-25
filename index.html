@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>뇌 가위바위보</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#1b1233; --bg2:#0f1b3a; --ink:#f4eefc; --dim:#a79cc4;
+  --tissue:#f6a6b8; --tissue2:#e57f9c; --fold:#b94f75;
+  --sc:#37e3ff; --ro:#ffb22e; --pa:#b48bff; --lobe:#ff5d7a;
+  --win:#5df2a4; --lose:#ff6b7d;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{
+  font-family:"Jua","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  color:var(--ink);
+  background:radial-gradient(1200px 700px at 50% -10%,#3a2370 0%,transparent 60%),linear-gradient(160deg,var(--bg1),var(--bg2));
+  min-height:100vh; display:flex; flex-direction:column; align-items:center;
+  padding:16px 14px 28px; gap:12px; overflow-x:hidden;
+}
+h1{font-size:clamp(26px,5vw,40px);font-weight:400;letter-spacing:.02em}
+.top{display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:center;font-size:18px}
+.chip{padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14)}
+.pips{display:flex;gap:6px}
+.pip{width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2)}
+.pip.w{background:var(--win)}.pip.l{background:var(--lose)}.pip.d{background:#c9c2dd}
+.stage{position:relative;width:min(640px,100%);aspect-ratio:3/2}
+svg{width:100%;height:100%;display:block;overflow:visible}
+.count{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:clamp(90px,22vw,170px);pointer-events:none;text-shadow:0 0 40px rgba(255,255,255,.55);
+}
+.count.pop{animation:pop .8s ease-out}
+@keyframes pop{0%{transform:scale(1.6);opacity:0}25%{opacity:1}100%{transform:scale(.8);opacity:0}}
+.board{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:min(640px,100%)}
+.side{padding:12px;border-radius:18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);text-align:center;min-height:128px}
+.side small{color:var(--dim);font-size:15px}
+.hand{font-size:56px;line-height:1.25;min-height:70px;transition:transform .2s}
+.hand.in{animation:slam .25s ease-out}
+@keyframes slam{0%{transform:scale(.4)}70%{transform:scale(1.18)}100%{transform:scale(1)}}
+.msg{font-size:clamp(20px,4vw,26px);min-height:34px;text-align:center}
+.msg.w{color:var(--win)}.msg.l{color:var(--lose)}
+.keys{display:flex;gap:10px;width:min(640px,100%)}
+.key{
+  flex:1;border:0;border-radius:18px;padding:10px 4px 8px;color:var(--ink);cursor:pointer;
+  font:inherit;font-size:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);
+  display:flex;flex-direction:column;align-items:center;gap:2px;touch-action:manipulation;
+}
+.key b{font-weight:400;font-size:30px}
+.key span{font-size:34px}
+.key:active,.key.hit{transform:translateY(2px) scale(.97);background:rgba(255,255,255,.2)}
+.key:disabled{opacity:.45;cursor:default}
+.ctl{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:center}
+.ctl label{display:flex;gap:10px;align-items:center;font-size:17px}
+input[type=range]{accent-color:var(--lobe);width:150px}
+.go{
+  font:inherit;font-size:22px;color:#2a0f26;background:linear-gradient(180deg,#ffd0dc,var(--tissue2));
+  border:0;border-radius:999px;padding:10px 34px;cursor:pointer;box-shadow:0 8px 24px rgba(229,127,156,.4)
+}
+.go:active{transform:translateY(2px)}
+.overlay{
+  position:fixed;inset:0;background:rgba(10,8,25,.82);display:none;align-items:center;justify-content:center;padding:18px;z-index:5
+}
+.overlay.on{display:flex}
+.card{
+  width:min(440px,100%);padding:26px 24px;border-radius:26px;text-align:center;
+  background:linear-gradient(170deg,#2c1d52,#171a3f);border:1px solid rgba(255,255,255,.18);
+  display:flex;flex-direction:column;gap:12px;align-items:center
+}
+.card h2{font-size:34px;font-weight:400}
+.nums{display:flex;gap:12px;width:100%}
+.nums div{flex:1;padding:12px 4px;border-radius:16px;background:rgba(255,255,255,.07)}
+.nums b{display:block;font-weight:400;font-size:38px}
+.nums small{color:var(--dim);font-size:15px}
+.w b{color:var(--win)}.l b{color:var(--lose)}
+.cardspeed{display:flex;gap:10px;align-items:center;font-size:17px}
+.cardspeed input{width:140px}
+.card p{color:var(--dim);font-size:16px;line-height:1.5}
+.help{color:var(--dim);font-size:15px;text-align:center;max-width:560px;line-height:1.5}
+@media (prefers-reduced-motion:reduce){.count.pop,.hand.in{animation:none}}
+</style>
+</head>
+<body>
+<h1>🧠 뇌 가위바위보</h1>
+<div class="top">
+  <span class="chip" id="round">0 / 10판</span>
+  <span class="pips" id="pips"></span>
+  <span class="chip" id="score">승 0 · 무 0 · 패 0</span>
+</div>
+
+<div class="stage">
+  <svg viewBox="0 0 600 400" aria-label="뇌 그림">
+    <defs>
+      <radialGradient id="tg" cx="45%" cy="35%" r="75%">
+        <stop offset="0" stop-color="#ffd3dd"/><stop offset=".6" stop-color="var(--tissue)"/><stop offset="1" stop-color="var(--tissue2)"/>
+      </radialGradient>
+      <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="9"/></filter>
+    </defs>
+    <!-- 소뇌·뇌줄기 -->
+    <path d="M395 292c10 22 45 30 78 12 18-10 18-30 4-38z" fill="#cf6d8e"/>
+    <path d="M300 300c-6 30-4 55 6 78h44c-6-24-4-52 0-78z" fill="#d98aa4"/>
+    <!-- 대뇌 -->
+    <path id="brain" d="M92 220C46 150 102 52 212 56C290 14 414 30 476 96C560 122 576 228 508 272C494 324 410 332 382 290C350 330 296 322 276 290C226 316 140 296 92 220Z" fill="url(#tg)" stroke="#b94f75" stroke-width="3"/>
+    <g fill="none" stroke="var(--fold)" stroke-width="3.5" stroke-linecap="round" opacity=".55">
+      <path d="M150 110c30 14 52 6 70-14"/><path d="M130 190c34-8 46 14 78 6"/>
+      <path d="M250 70c14 26 4 44-12 60"/><path d="M330 56c10 22 34 24 52 14"/>
+      <path d="M420 84c-4 24 14 38 34 38"/><path d="M276 160c26 16 40-2 56-18"/>
+      <path d="M490 170c-22 2-30 22-46 30"/><path d="M200 258c24-6 40 6 62-4"/>
+      <path d="M340 262c14-14 36-8 52-22"/><path d="M110 150c-8 22 0 40 10 52"/>
+    </g>
+    <!-- 전두엽 -->
+    <ellipse id="lobe" cx="150" cy="168" rx="58" ry="52" fill="var(--lobe)" opacity=".28"/>
+    <ellipse id="lobeGlow" cx="150" cy="168" rx="58" ry="52" fill="var(--lobe)" opacity="0" filter="url(#glow)"/>
+    <text x="150" y="172" text-anchor="middle" font-size="17" fill="#5a1530" font-family="Jua,sans-serif">전두엽</text>
+    <!-- 경로 -->
+    <g stroke="#fff" stroke-opacity=".28" stroke-width="2.5" stroke-dasharray="3 7" stroke-linecap="round">
+      <line x1="290" y1="112" x2="168" y2="160"/><line x1="440" y1="158" x2="198" y2="170"/><line x1="370" y1="238" x2="186" y2="196"/>
+    </g>
+    <!-- 영역 -->
+    <g id="zones" font-family="Jua,sans-serif" text-anchor="middle">
+      <g data-z="0"><circle class="zg" cx="290" cy="112" r="46" fill="var(--sc)" opacity="0" filter="url(#glow)"/><circle class="zc" cx="290" cy="112" r="34" fill="#173b52" stroke="var(--sc)" stroke-width="3"/><text x="290" y="123" font-size="32">✌️</text><text x="290" y="168" font-size="15" fill="#5a1530">가위</text></g>
+      <g data-z="1"><circle class="zg" cx="440" cy="158" r="46" fill="var(--ro)" opacity="0" filter="url(#glow)"/><circle class="zc" cx="440" cy="158" r="34" fill="#4a3210" stroke="var(--ro)" stroke-width="3"/><text x="440" y="169" font-size="32">✊</text><text x="440" y="214" font-size="15" fill="#5a1530">바위</text></g>
+      <g data-z="2"><circle class="zg" cx="370" cy="238" r="46" fill="var(--pa)" opacity="0" filter="url(#glow)"/><circle class="zc" cx="370" cy="238" r="34" fill="#2c1e56" stroke="var(--pa)" stroke-width="3"/><text x="370" y="249" font-size="32">✋</text><text x="370" y="284" font-size="15" fill="#5a1530">보</text></g>
+    </g>
+    <circle id="spark" r="11" fill="#fff" opacity="0"/>
+    <circle id="sparkHalo" r="22" fill="#fff" opacity="0" filter="url(#glow)"/>
+  </svg>
+  <div class="count" id="count"></div>
+</div>
+
+<div class="msg" id="msg">속도를 고르고 시작하세요</div>
+
+<div class="board">
+  <div class="side"><small>나</small><div class="hand" id="myHand">❔</div><small id="myNote">&nbsp;</small></div>
+  <div class="side"><small>컴퓨터</small><div class="hand" id="pcHand">❔</div><small id="pcNote">&nbsp;</small></div>
+</div>
+
+<div class="keys">
+  <button class="key" data-k="0" disabled><b>1</b><span>✌️</span>가위</button>
+  <button class="key" data-k="1" disabled><b>2</b><span>✊</span>바위</button>
+  <button class="key" data-k="2" disabled><b>3</b><span>✋</span>보</button>
+</div>
+
+<div class="ctl">
+  <label>신호 속도 <input type="range" id="speed" min="0.1" max="0.5" step="0.1" value="0.3"><span id="speedV">0.3초</span></label>
+  <button class="go" id="start">시작</button>
+</div>
+<p class="help">불이 켜진 영역을 보고, 불이 전두엽에 닿아 컴퓨터가 손을 내기 전에 1(가위) · 2(바위) · 3(보)을 눌러 이기세요. 컴퓨터는 불이 켜졌던 영역의 손을 냅니다.</p>
+
+<div class="overlay" id="over">
+  <div class="card">
+    <h2 id="verdict"></h2>
+    <div class="nums">
+      <div class="w"><b id="rw">0</b><small>승</small></div>
+      <div><b id="rd">0</b><small>무</small></div>
+      <div class="l"><b id="rl">0</b><small>패</small></div>
+    </div>
+    <p id="detail"></p>
+    <label class="cardspeed">신호 속도 <input type="range" id="speed2" min="0.1" max="0.5" step="0.1" value="0.3"><span id="speedV2">0.3초</span></label>
+    <button class="go" id="again">다시 하기</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var H=["✌️","✊","✋"], N=["가위","바위","보"];
+  var Z=[{x:290,y:112,c:"#37e3ff"},{x:440,y:158,c:"#ffb22e"},{x:370,y:238,c:"#b48bff"}];
+  var LOBE={x:160,y:168};
+  var $=function(i){return document.getElementById(i)};
+  var zones=document.querySelectorAll("#zones g"), keys=document.querySelectorAll(".key");
+  var spark=$("spark"), halo=$("sparkHalo"), lobeGlow=$("lobeGlow");
+  var rnd=0, W=0, D=0, L=0, busy=false, accepting=false, token=0;
+  var lit=-1, myPick=-1, litAt=0, myTime=0, speed=0.3, reactions=[];
+  var timers=[];
+
+  function after(ms,fn){var t=setTimeout(fn,ms);timers.push(t)}
+  function clearTimers(){timers.forEach(clearTimeout);timers=[]}
+
+  function pips(){
+    var p=$("pips");p.innerHTML="";
+    for(var i=0;i<10;i++){var s=document.createElement("i");s.className="pip";s.id="p"+i;p.appendChild(s)}
+  }
+  function score(){
+    $("round").textContent=rnd+" / 10판";
+    $("score").textContent="승 "+W+" · 무 "+D+" · 패 "+L;
+  }
+  function setMsg(t,c){var m=$("msg");m.textContent=t;m.className="msg"+(c?" "+c:"")}
+  function setHand(id,i){
+    var e=$(id);e.textContent=i<0?"❔":H[i];
+    e.classList.remove("in");void e.offsetWidth;if(i>=0)e.classList.add("in");
+  }
+  function setKeys(on){keys.forEach(function(k){k.disabled=!on})}
+  function resetBoard(){
+    zones.forEach(function(g){
+      g.querySelector(".zg").setAttribute("opacity","0");
+      g.querySelector(".zc").setAttribute("stroke-width","3");
+    });
+    spark.setAttribute("opacity","0");halo.setAttribute("opacity","0");lobeGlow.setAttribute("opacity","0");
+    $("lobe").setAttribute("opacity",".28");
+  }
+  function showCount(n){
+    var c=$("count");c.textContent=n;c.classList.remove("pop");void c.offsetWidth;c.classList.add("pop");
+  }
+
+  function startGame(){
+    clearTimers();token++;
+    rnd=0;W=D=L=0;reactions=[];busy=true;
+    $("over").classList.remove("on");pips();score();
+    $("start").disabled=true;$("speed").disabled=true;
+    nextRound();
+  }
+
+  function nextRound(){
+    if(rnd>=10){return finish()}
+    var my=token;
+    resetBoard();setHand("myHand",-1);setHand("pcHand",-1);
+    $("myNote").innerHTML="&nbsp;";$("pcNote").innerHTML="&nbsp;";
+    myPick=-1;lit=-1;accepting=false;setKeys(false);
+    setMsg("준비…","");
+    var n=3;showCount(n);
+    (function tick(){
+      after(800,function(){
+        if(my!==token)return;
+        n--;
+        if(n>0){showCount(n);tick()}else{$("count").textContent="";light()}
+      });
+    })();
+  }
+
+  function light(){
+    var my=token;
+    lit=Math.floor(Math.random()*3);
+    var z=Z[lit];
+    zones[lit].querySelector(".zg").setAttribute("opacity",".95");
+    zones[lit].querySelector(".zc").setAttribute("stroke-width","6");
+    spark.setAttribute("fill",z.c);halo.setAttribute("fill",z.c);
+    spark.setAttribute("opacity","1");halo.setAttribute("opacity",".9");
+    litAt=performance.now();accepting=true;setKeys(true);
+    setMsg("불이 켜졌다! 눌러!","");
+    var dur=speed*1000;
+    (function move(now){
+      if(my!==token)return;
+      var t=Math.min(1,(performance.now()-litAt)/dur);
+      var e=t*t*(3-2*t);
+      var x=z.x+(LOBE.x-z.x)*e, y=z.y+(LOBE.y-z.y)*e;
+      spark.setAttribute("cx",x);spark.setAttribute("cy",y);
+      halo.setAttribute("cx",x);halo.setAttribute("cy",y);
+      if(t<1){requestAnimationFrame(move)}else{arrive()}
+    })();
+  }
+
+  function arrive(){
+    accepting=false;setKeys(false);
+    lobeGlow.setAttribute("opacity",".95");$("lobe").setAttribute("opacity",".6");
+    setHand("pcHand",lit);
+    $("pcNote").textContent=N[lit];
+    var late=myPick<0, res;
+    if(late){
+      res="l";setHand("myHand",-1);$("myNote").textContent="늦었어요!";
+      setMsg("너무 늦었어요 — 패배","l");
+    }else{
+      setHand("myHand",myPick);$("myNote").textContent=N[myPick]+" · "+myTime+"ms";
+      var d=(myPick-lit+3)%3;
+      if(d===1){res="w";setMsg("이겼다!","w")}
+      else if(d===0){res="d";setMsg("비겼어요","")}
+      else{res="l";setMsg("졌어요","l")}
+      reactions.push(myTime);
+    }
+    rnd++;
+    if(res==="w")W++;else if(res==="d")D++;else L++;
+    $("p"+(rnd-1)).className="pip "+res;
+    score();
+    var my=token;
+    after(1500,function(){if(my===token)nextRound()});
+  }
+
+  function press(k){
+    if(!accepting||myPick>=0)return;
+    myPick=k;myTime=Math.round(performance.now()-litAt);
+    keys[k].classList.add("hit");
+    setTimeout(function(){keys[k].classList.remove("hit")},120);
+    setHand("myHand",k);
+  }
+
+  function finish(){
+    busy=false;$("start").disabled=false;$("speed").disabled=false;$("start").textContent="다시 시작";
+    $("rw").textContent=W;$("rd").textContent=D;$("rl").textContent=L;
+    $("verdict").textContent=W>L?"🎉 승리!":(W<L?"😵 패배":"🤝 무승부");
+    var avg=reactions.length?Math.round(reactions.reduce(function(a,b){return a+b},0)/reactions.length):null;
+    $("detail").textContent="신호 속도 "+speed.toFixed(1)+"초"+(avg!==null?" · 평균 반응 "+avg+"ms":"")+(L>W?" · 더 빨리 눌러 보세요":"");
+    setMsg("10판 끝!","");
+    $("over").classList.add("on");
+  }
+
+  document.addEventListener("keydown",function(e){
+    var m={"1":0,"2":1,"3":2,"Numpad1":0,"Numpad2":1,"Numpad3":2};
+    var k=m.hasOwnProperty(e.key)?m[e.key]:(m.hasOwnProperty(e.code)?m[e.code]:-1);
+    if(k>=0){e.preventDefault();press(k)}
+  });
+  keys.forEach(function(b){
+    b.addEventListener("pointerdown",function(e){e.preventDefault();press(+b.dataset.k)});
+  });
+  function syncSpeed(){
+    speed=+this.value;
+    $("speed").value=speed;$("speed2").value=speed;
+    $("speedV").textContent=speed.toFixed(1)+"초";
+    $("speedV2").textContent=speed.toFixed(1)+"초";
+  }
+  $("speed").addEventListener("input",syncSpeed);
+  $("speed2").addEventListener("input",syncSpeed);
+  $("start").addEventListener("click",startGame);
+  $("again").addEventListener("click",startGame);
+  pips();score();
+})();
+</script>
+</body>
+</html>
